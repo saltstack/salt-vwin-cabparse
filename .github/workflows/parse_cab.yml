@@ -76,7 +76,7 @@ jobs:
           $UTF8NoBOM = New-Object System.Text.UTF8Encoding $false
           [System.IO.File]::WriteAllText($json_file, $json_data, $UTF8NoBOM)
       - name: Clean up Chunk JSON Files
-        run |
+        run: |
           Write-Host "Cleaning up chunk JSON files..."
           Remove-Item -path all-artifacts -Recurse -Force
       - name: Upload Merged Artifact
