@@ -1,0 +1,17 @@
+name: Parse CAB
+
+on: [push, workflow_call, pull_request]
+
+jobs:
+  build_and_test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Parse Cab
+        run: .\wsusscn2_parse.ps1
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wsus-updates
+          path: wsus_updates.json
