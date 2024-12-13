@@ -28,7 +28,15 @@
 # 
 ################################################################################
 [CmdletBinding()]
-param()
+param(
+    [Parameter(Mandatory=$false)]
+    # Count the number of cab files contained in the wsusscn2.cab file
+    [Switch]$Count,
+
+    [Parameter(Mandatory=$false)]
+    # Count the number of cab files contained in the wsusscn2.cab file
+    [int]$Chunk = 0
+)
 
 ################################################################################
 # Script Settings
@@ -45,7 +53,12 @@ $uri = "https://go.microsoft.com/fwlink/?LinkID=74689"
 $cab_file = "$env:TEMP\wsusscn2.cab"
 $cab_dir = "$env:TEMP\wsusscn2"
 $cur_dir = Get-Location
-$json_file = "$cur_dir\wsus_updates.json"
+if ( $Chunk -gt 0 ) {
+    $json_file = "$cur_dir\wsus_updates_$Chunk.json"
+} else {
+    $json_file = "$cur_dir\wsus_updates.json"
+}
+
 
 ################################################################################
 # Script Functions
@@ -118,11 +131,30 @@ if ( Test-Path -Path "$cab_dir\package.cab" ) {
     exit 1
 }
 
+# Count the number of cab files inside
+$cab_files = Get-ChildItem $cab_dir -File -Filter "*.cab"
+if ( $Count ) {
+    return $cab_files.Length
+    exit 0
+}
+
 # Extract all cabs in the cab file to their own directories
 Write-Host "Extracting all internal cab files"
-Get-ChildItem $cab_dir -File -Filter "*.cab" | ForEach-Object {
+$cab_files | ForEach-Object {
     $file_name = $_.Name
     $dir_name = "expanded"
+
+    # Skip files that aren't in the chunk if Chunk is greater than 0
+    if ( $Chunk -gt 0 ) {
+        $file_number = $file_name.Split(".")[0].Trim("package")
+        $max = $Chunk * 10
+        $min = $max - 9
+        if ( $file_number -notin $min..$max ) {
+            return  # Behaves like continue
+        }
+    }
+
+    # Expand the file
     $elapsed_time = $(Get-Date) - $start_time
     $total_time = "{0:HH:mm:ss}" -f ([datetime]$elapsed_time.Ticks)
     Write-Host "- Expanding $file_name` ($total_time): " -NoNewline
