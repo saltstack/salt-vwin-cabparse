@@ -33,14 +33,14 @@ jobs:
           $matrix_json = $matrix | ConvertTo-Json
 
           # Set output
-          Write-Output "::set-output name=matrix::$matrix_json"
+          Write-Output "matrix=$matrix_json" | Out-File -FilePath $env:$GITHUB_OUTPUT -Encoding utf8 -Append
 
   parse-cab:
-    needs: generate-matrix
     runs-on: windows-latest
+    needs: generate-matrix
     strategy:
       matrix:
-        chunk: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+        chunk: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
