@@ -12,7 +12,8 @@ on:
 jobs:
   generate-matrix:
     runs-on: windows-latest
-    outputs: ${{ steps.set-matrix.outputs.matrix }}
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,12 +30,14 @@ jobs:
           $matrix = 1..$chunks
 
           # Convert the matrix to JSON
-          $matrixJSON = $matrix | ConvertTo-Json
+          $matrix_json = $matrix | ConvertTo-Json
 
           # Set output
-          Write-Output "::set-output name=matrix::$matrixJSON"
+          Write-Output "::set-output name=matrix::$matrix_json"
       - name: Debug output
-        run: Write-Host "Generated matrix: ${{ steps.set-matrix.outputs.matrix }}"
+        run: |
+          $matrix_value = ${{ steps.set-matrix.outputs.matrix }}
+          Write-Host "Generated matrix: $matrix_value"
 
   parse-cab:
     needs: generate-matrix
@@ -47,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Parse Cab Chunk ${{ matrix.chunk }}
         run: . .\wsusscn2_parse.ps1 -Chunk ${{ matrix.chunk }}
-      - name: Upload Artifact Chunk ${{  }}
+      - name: Upload Artifact Chunk ${{ matrix.chunk }}
         uses: actions/upload-artifact@v4
         with:
           name: wsus-updates-${{ matrix.chunk }}
