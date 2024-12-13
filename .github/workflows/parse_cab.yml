@@ -10,15 +10,77 @@ on:
   workflow_dispatch:
 
 jobs:
-  parse_and_upload:
+  generate-matrix:
     runs-on: windows-latest
+    outputs: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Parse Cab
-        run: . .\wsusscn2_parse.ps1
-      - name: Upload artifact
+      - name: Calculate matrix
+        id: set-matrix
+        run: |
+          # Download the cab file and get the number of nested cab files
+          $folders = .\wsusscn2_parse.ps1 -Count
+
+          # Break it up into 10 folder chunks
+          $chunks = [int][Math]::Ceiling($folders/10)
+
+          # Generate the matrix
+          $matrix = 1..$chunks
+
+          # Convert the matrix to JSON
+          $matrix_json = $matrix | ConvertTo-Json
+
+          # Set output
+          Write-Output "::set-output name=matrix::$matrix_json"
+      - name: Debug output
+        run: |
+          $matrix_value = ${{ steps.set-matrix.outputs.matrix }}
+          Write-Host "Generated matrix: $matrix_value"
+
+  parse-cab:
+    needs: generate-matrix
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        chunk: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Parse Cab Chunk ${{ matrix.chunk }}
+        run: . .\wsusscn2_parse.ps1 -Chunk ${{ matrix.chunk }}
+      - name: Upload Artifact Chunk ${{  }}
         uses: actions/upload-artifact@v4
         with:
-          name: wsus-updates
-          path: wsus_updates.json
+          name: wsus-updates-${{ matrix.chunk }}
+          path: artifacts/wsus_updates_${{ matrix.chunk }}.json
+
+  join-artifacts:
+    needs: parse-cab
+    runs-on: windows-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: all-artifacts
+      - name: Merge Artifacts
+        run: |
+          $json_files = Get-ChildItem -Path "all-artifacts" -Filter *.json
+          $merged_data = @()
+          $json_files | ForEach-Object {
+            $json_content = Get-Content -Path $_.FullName | ConvertFrom-Json
+            $merged_data += $json_content
+          }
+          $json_data = $merged_data | ConvertTo-Json | Out-String
+          $json_file = "wsus_updates.json"
+          $UTF8NoBOM = New-Object System.Text.UTF8Encoding $false
+          [System.IO.File]::WriteAllText($json_file, $json_data, $UTF8NoBOM)
+      - name: Clean up Chunk JSON Files
+        run |
+          Write-Host "Cleaning up chunk JSON files..."
+          Remove-Item -path all-artifacts -Recurse -Force
+      - name: Upload Merged Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: wsus_updates
+          path: artifacts/wsus_updates.json
