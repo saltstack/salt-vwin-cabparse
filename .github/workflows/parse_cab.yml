@@ -12,7 +12,8 @@ on:
 jobs:
   generate-matrix:
     runs-on: windows-latest
-    outputs: ${{ steps.set-matrix.outputs.matrix }}
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
