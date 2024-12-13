@@ -35,9 +35,7 @@ jobs:
           # Set output
           Write-Output "::set-output name=matrix::$matrix_json"
       - name: Debug output
-        run: |
-          $matrix_value = ${{ steps.set-matrix.outputs.matrix }}
-          Write-Host "Generated matrix: $matrix_value"
+        run: echo "Generated matrix: ${{ steps.set-matrix.outputs.matrix }}"
 
   parse-cab:
     needs: generate-matrix
