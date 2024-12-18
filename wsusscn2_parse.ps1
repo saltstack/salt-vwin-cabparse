@@ -103,18 +103,20 @@ function Expand-Cab {
 ################################################################################
 Write-Host "Generate VWin Data from wsusscn2.cab"
 
-# Downloading
-Write-Verbose "URI: $uri"
-Write-Verbose "File: $cab_file"
-$elapsed_time = $(Get-Date) - $start_time
-$total_time = "{0:HH:mm:ss}" -f ([datetime]$elapsed_time.Ticks)
-Write-Host "- Downloading wsusscn2.cab ($total_time): " -NoNewline
-Invoke-WebRequest -Uri $uri -OutFile $cab_file -UseBasicParsing
-if ( Test-Path -Path $cab_file ) {
-    Write-Host "SUCCESS" -ForegroundColor Green
-} else {
-    Write-Host "FAILED" -ForegroundColor Red
-    exit 1
+if ( ! ( Test-Path -Path $cab_file ) ) {
+    # Downloading
+    Write-Verbose "URI: $uri"
+    Write-Verbose "File: $cab_file"
+    $elapsed_time = $(Get-Date) - $start_time
+    $total_time = "{0:HH:mm:ss}" -f ([datetime]$elapsed_time.Ticks)
+    Write-Host "- Downloading wsusscn2.cab ($total_time): " -NoNewline
+    Invoke-WebRequest -Uri $uri -OutFile $cab_file -UseBasicParsing
+    if ( Test-Path -Path $cab_file ) {
+        Write-Host "SUCCESS" -ForegroundColor Green
+    } else {
+        Write-Host "FAILED" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # Extracting main cab

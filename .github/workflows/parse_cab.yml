@@ -30,10 +30,10 @@ jobs:
           $matrix = 1..$chunks
 
           # Convert the matrix to JSON
-          $matrix_json = $matrix | ConvertTo-Json
+          $matrix_json = $matrix | ConvertTo-Json -Compress
 
           # Set output
-          Write-Output "matrix=$matrix_json" | Out-File -FilePath $env:$GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Output "matrix=$matrix_json" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
   parse-cab:
     runs-on: windows-latest
@@ -50,34 +50,36 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wsus-updates-${{ matrix.chunk }}
-          path: artifacts/wsus_updates_${{ matrix.chunk }}.json
+          path: wsus_updates_${{ matrix.chunk }}.json
+          retention-days: 1
 
   join-artifacts:
     needs: parse-cab
     runs-on: windows-latest
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          path: all-artifacts
+          merge-multiple: true
+      - name: show me stuff
+        run: |
+          Get-ChildItem . -Recurse | Select FullName | Write-Host
       - name: Merge Artifacts
         run: |
-          $json_files = Get-ChildItem -Path "all-artifacts" -Filter *.json
-          $merged_data = @()
+          $json_files = Get-ChildItem -Path . -Filter *.json
+          $merged_data = @{}
           $json_files | ForEach-Object {
             $json_content = Get-Content -Path $_.FullName | ConvertFrom-Json
-            $merged_data += $json_content
+            $json_content.PSObject.Properties | ForEach {
+              $merged_data[$_.Name] = $_.Value
+            }
           }
-          $json_data = $merged_data | ConvertTo-Json | Out-String
+          $json_data = $merged_data | ConvertTo-Json -Depth 10 | Out-String
           $json_file = "wsus_updates.json"
           $UTF8NoBOM = New-Object System.Text.UTF8Encoding $false
           [System.IO.File]::WriteAllText($json_file, $json_data, $UTF8NoBOM)
-      - name: Clean up Chunk JSON Files
-        run: |
-          Write-Host "Cleaning up chunk JSON files..."
-          Remove-Item -path all-artifacts -Recurse -Force
       - name: Upload Merged Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wsus_updates
-          path: artifacts/wsus_updates.json
+          path: wsus_updates.json
