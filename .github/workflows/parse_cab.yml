@@ -47,7 +47,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Parse Cab Chunk ${{ matrix.chunk }}
-        run: . .\wsusscn2_parse.ps1 -Chunk ${{ matrix.chunk }}
+        id: parse-cab-chunk
+        uses: nick-fields/retry@v3
+        with:
+          command: . .\wsusscn2_parse.ps1 -Chunk ${{ matrix.chunk }}
+          max_attempts: 3
+          timeout_minutes: 360
       - name: Get Remaining Disk Space
         run: |
           Get-Volume
