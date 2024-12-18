@@ -78,6 +78,9 @@ jobs:
           $json_file = "wsus_updates.json"
           $UTF8NoBOM = New-Object System.Text.UTF8Encoding $false
           [System.IO.File]::WriteAllText($json_file, $json_data, $UTF8NoBOM)
+      - name: Get Disk Space Remaining
+        run |
+          Get-Volume
       - name: Upload Merged Artifact
         uses: actions/upload-artifact@v4
         with:
