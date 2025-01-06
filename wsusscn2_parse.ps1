@@ -134,7 +134,7 @@ if ( Test-Path -Path "$cab_dir\package.cab" ) {
 }
 
 # Count the number of cab files inside
-$cab_files = Get-ChildItem $cab_dir -File -Filter "*.cab"
+$cab_files = Get-ChildItem $cab_dir -File -Filter "*.cab" | Sort-Object { [int]($_.BaseName -split "package")[-1] }
 if ( $Count ) {
     return $cab_files.Length
     exit 0
@@ -174,7 +174,7 @@ $dict_updates = @{}
 
 # Get a list of all the files in the expanded\l\en directory because we only
 # want updates in English
-$update_files = Get-ChildItem -Path "$cab_dir\expanded\l\en" -File | Sort-Object {[int]($_.Name)}
+$update_files = Get-ChildItem -Path "$cab_dir\expanded\l\en" -File | Sort-Object { [int]($_.Name) }
 $total_files = $update_files.Length
 $total_processed = 0
 
@@ -184,7 +184,7 @@ Write-Host "Gathering data from $total_files updates"
 try {
     $update_files | ForEach-Object {
         # They will all have this file name
-        $file_name = $_.Name    
+        $file_name = $_.Name
         $percentage = [math]::round( ( $total_processed / $total_files ) * 100 )
         $elapsed_time = $(Get-Date) - $start_time
         $total_time = "{0:HH:mm:ss}" -f ([datetime]$elapsed_time.Ticks)
@@ -200,7 +200,6 @@ try {
         $xml_content = Get-Content -Path "$cab_dir\expanded\x\$file_name"
         [XML]$xml = "<root>" + $xml_content + "</root>"
         $dict_update["KBs"] = @("KB" + $xml.root.ExtendedProperties.KBArticleID)
-        $dict_update["CVEs"] = @()
 
         # If there is no associated KB, we skip
         if ( ! $xml.root.ExtendedProperties.KBArticleID ) {
@@ -221,6 +220,15 @@ try {
         $dict_update["Title"] = $xml.LocalizedProperties.Title
         $dict_update["Description"] = $xml.LocalizedProperties.Description
         $dict_update["AdditionalInfoUrl"] = @($xml.LocalizedProperties.MoreInfoUrl)
+
+        # Get CVEs
+        $dict_update["CVEs"] = New-Object System.Collections.Generic.List[System.Object]
+        $dict_update["AdditionalInfoUrl"] | ForEach-Object {
+            if ( $_ -like "*/CVE-*" ) {
+                $cve_value = "CVE-" + ($_ -split "/CVE-")[1]
+                $dict_update["CVEs"].Add($cve_value)
+            }
+        }
 
         # Save this update to the updates dict. UpdateID is the primary key
         $dict_updates[$dict_update["UpdateID"]] = $dict_update
