@@ -93,8 +93,21 @@ jobs:
         with:
           name: wsus_updates
           path: wsus_updates.json
+
+  create-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    needs: join-artifacts
+    steps:
+      - name: determine-tag
+        id: determine-tag
+        run: echo "RELEASETAG=$(date +"%Y%m%d%H")" >> $GITHUB_OUTPUT
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: wsus_updates
       - name: Create release
-        if: github.event_name == 'schedule'
         uses: ncipollo/release-action@v1
         with:
           artifacts: 'wsus_updates.json'
+          tag: '${{ steps.determine-tag.outputs.RELEASETAG }}'
